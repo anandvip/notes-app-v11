@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Notes Application</title>
+    <title>Notes Application</title>
     <style>
         :root {
             --bg-primary: #ffffff;
@@ -12,10 +12,6 @@
             --text-secondary: #666666;
             --accent: #00CED1;
             --border: #dddddd;
-            --toast-bg: rgba(0, 206, 209, 0.9);
-            --toast-text: #ffffff;
-            --modal-bg: rgba(0, 0, 0, 0.5);
-            --button-hover: #00A9AD;
         }
         .dark-theme {
             --bg-primary: #333333;
@@ -24,10 +20,6 @@
             --text-secondary: #cccccc;
             --accent: #00CED1;
             --border: #555555;
-            --toast-bg: rgba(0, 206, 209, 0.9);
-            --toast-text: #ffffff;
-            --modal-bg: rgba(255, 255, 255, 0.1);
-            --button-hover: #00A9AD;
         }
         body, html {
             margin: 0;
@@ -43,7 +35,7 @@
             height: 100%;
         }
         #sidebar {
-            width: 300px;
+            width: 450px;
             background-color: var(--bg-secondary);
             padding: 20px;
             box-sizing: border-box;
@@ -91,18 +83,6 @@
             resize: vertical;
             outline: none;
         }
-        button {
-            background-color: var(--accent);
-            color: var(--bg-primary);
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 3px;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: var(--button-hover);
-        }
         #add-note-btn {
             position: fixed;
             bottom: 20px;
@@ -110,12 +90,20 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
+            background-color: var(--accent);
+            color: var(--bg-primary);
+            border: none;
             font-size: 24px;
+            cursor: pointer;
         }
         #add-project-btn {
             width: 100%;
             padding: 10px;
             margin-top: 20px;
+            background-color: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            cursor: pointer;
         }
         .project-item {
             margin-bottom: 10px;
@@ -155,8 +143,8 @@
             z-index: 1000;
         }
         .toast {
-            background-color: var(--toast-bg);
-            color: var(--toast-text);
+            background-color: var(--accent);
+            color: var(--bg-primary);
             padding: 10px 20px;
             border-radius: 5px;
             margin-bottom: 10px;
@@ -180,6 +168,9 @@
             background-color: var(--bg-secondary);
             border: 1px solid var(--border);
             color: var(--text-primary);
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
         }
         .formatting-menu button:hover {
             background-color: var(--accent);
@@ -187,45 +178,11 @@
         }
         .delete-btn {
             background-color: #ff4d4d;
-        }
-        .delete-btn:hover {
-            background-color: #ff3333;
-        }
-        #version-settings {
-            margin-top: 20px;
-            background-color: var(--bg-secondary);
-            padding: 10px;
-            border-radius: 5px;
-        }
-        #version-frequency {
-            width: 100%;
-            padding: 5px;
-            margin-top: 5px;
-        }
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--modal-bg);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: var(--bg-primary);
-            padding: 20px;
-            border-radius: 5px;
-            max-width: 80%;
-            max-height: 80%;
-            overflow: auto;
-        }
-        .version-item {
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -234,16 +191,6 @@
         <div id="sidebar">
             <div id="projects-list"></div>
             <button id="add-project-btn">Add Project</button>
-            <div id="version-settings">
-                <h3>Version Control</h3>
-                <select id="version-frequency">
-                    <option value="0">No versioning</option>
-                    <option value="5000" selected>Every 5 seconds</option>
-                    <option value="10000">Every 10 seconds</option>
-                    <option value="30000">Every 30 seconds</option>
-                    <option value="60000">Every minute</option>
-                </select>
-            </div>
         </div>
         <div id="main-content">
             <div id="header">
@@ -262,7 +209,6 @@
         let notes = [];
         let projects = [];
         let currentProject = null;
-        let versioningInterval = 5000; // Default to 5 seconds
 
         const sidebar = document.getElementById('sidebar');
         const addNoteBtn = document.getElementById('add-note-btn');
@@ -273,7 +219,6 @@
         const addProjectBtn = document.getElementById('add-project-btn');
         const themeToggle = document.getElementById('theme-toggle');
         const toastContainer = document.getElementById('toast-container');
-        const versionFrequency = document.getElementById('version-frequency');
 
         // Initialize IndexedDB
         const dbName = 'NotesAppDB';
@@ -312,90 +257,35 @@
         }
 
         function saveToIndexedDB(storeName, data) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(storeName, 'readwrite');
-                const store = transaction.objectStore(storeName);
-                const request = store.put(data);
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => resolve(request.result);
-            });
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            store.put(data);
         }
 
         function deleteFromIndexedDB(storeName, id) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(storeName, 'readwrite');
-                const store = transaction.objectStore(storeName);
-                const request = store.delete(id);
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => resolve(request.result);
-            });
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            store.delete(id);
         }
 
-        function createNote(title = 'New Note', content = '', projectId = currentProject) {
+        addNoteBtn.addEventListener('click', addNote);
+        addProjectBtn.addEventListener('click', () => showInputToast("Enter project name:", addProject));
+        themeToggle.addEventListener('click', toggleTheme);
+
+        function addNote() {
             const note = {
                 id: Date.now(),
-                title: title,
-                content: content,
+                title: 'New Note',
+                content: 'Start typing here...',
                 author: authorInput.value || 'Anonymous',
-                projectId: projectId,
-                date: new Date().toLocaleString(),
-                versions: [{
-                    content: content,
-                    date: new Date().toLocaleString()
-                }]
+                projectId: currentProject,
+                date: new Date().toLocaleString()
             };
             notes.push(note);
-            saveToIndexedDB('notes', note)
-                .then(() => {
-                    renderNotes();
-                    renderProjects();
-                    showToast("New note added");
-                })
-                .catch(error => showToast("Error adding note: " + error));
-        }
-
-        function updateNote(id, field, value) {
-            const note = notes.find(n => n.id === id);
-            if (note) {
-                const oldContent = note.content;
-                note[field] = value;
-                note.author = authorInput.value || note.author;
-                note.date = new Date().toLocaleString();
-
-                if (field === 'content' && value !== oldContent && versioningInterval > 0) {
-                    const lastVersion = note.versions[note.versions.length - 1];
-                    const timeSinceLastVersion = new Date() - new Date(lastVersion.date);
-                    
-                    if (timeSinceLastVersion >= versioningInterval) {
-                        note.versions.push({
-                            content: value,
-                            date: new Date().toLocaleString()
-                        });
-                    } else {
-                        // Update the last version if we're within the versioning interval
-                        lastVersion.content = value;
-                        lastVersion.date = new Date().toLocaleString();
-                    }
-                }
-
-                saveToIndexedDB('notes', note)
-                    .then(() => {
-                        updateWordCount();
-                        renderProjects();
-                    })
-                    .catch(error => showToast("Error updating note: " + error));
-            }
-        }
-
-        function deleteNote(id) {
-            deleteFromIndexedDB('notes', id)
-                .then(() => {
-                    notes = notes.filter(note => note.id !== id);
-                    renderNotes();
-                    renderProjects();
-                    showToast("Note deleted");
-                })
-                .catch(error => showToast("Error deleting note: " + error));
+            saveToIndexedDB('notes', note);
+            renderNotes();
+            renderProjects();
+            showToast("New note added");
         }
 
         function renderNotes() {
@@ -408,39 +298,29 @@
                 noteElement.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <input type="text" class="note-title" value="${note.title}">
-                        <button class="version-history-btn" onclick="showVersionHistory(${note.id})">History</button>
                         <button class="delete-btn" data-id="${note.id}"><svg viewBox="0 0 448 512" width="10" title="trash-alt">
                         <path d="M32 464a48 48 0 0 0 48 48h288a48 48 0 0 0 48-48V128H32zm272-256a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zm-96 0a16 16 0 0 1 32 0v224a16 16 0 0 1-32 0zM432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.8a23.72 23.72 0 0 0-21.4 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16z"></path>
                     </svg></button>
                     </div>
                     <div class="formatting-menu">
                         <button data-format="bold">B</button>
-                        <button data-format="italic">I</button>
-                        <button data-format="underline">U</button>
-                        <button data-format="strikethrough">S</button>
                         <button data-format="h1">H1</button>
                         <button data-format="h2">H2</button>
                         <button data-format="h3">H3</button>
                         <button data-format="h4">H4</button>
+                        <button data-format="italic">I</button>
                         <button data-format="paragraph">P</button>
+                        <button data-format="underline">U</button>
+                        <button data-format="strikethrough">S</button>
                         <button data-format="unordered-list">UL</button>
                         <button data-format="ordered-list">OL</button>
                     </div>
                     <div class="note-content" contenteditable="true">${note.content}</div>
                     <div>Author: ${note.author}</div>
                     <div>Date: ${note.date}</div>
-                    <div>Versions: ${note.versions.length}</div>
                 `;
                 noteElement.querySelector('.note-title').addEventListener('input', (e) => updateNote(note.id, 'title', e.target.value));
-                
-                const contentElement = noteElement.querySelector('.note-content');
-                let updateTimeout;
-                contentElement.addEventListener('input', () => {
-                    clearTimeout(updateTimeout);
-                    updateTimeout = setTimeout(() => {
-                        updateNote(note.id, 'content', contentElement.innerHTML);
-                    }, versioningInterval);
-                });
+                noteElement.querySelector('.note-content').addEventListener('input', (e) => updateNote(note.id, 'content', e.target.innerHTML));
                 
                 noteElement.querySelectorAll('.formatting-menu button').forEach(button => {
                     button.addEventListener('click', () => applyFormatting(note.id, button.dataset.format));
@@ -490,6 +370,26 @@
             }
         }
 
+        function updateNote(id, field, value) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                note[field] = value;
+                note.author = authorInput.value || note.author;
+                note.date = new Date().toLocaleString();
+                saveToIndexedDB('notes', note);
+                updateWordCount();
+                renderProjects();
+            }
+        }
+
+        function deleteNote(id) {
+            notes = notes.filter(note => note.id !== id);
+            deleteFromIndexedDB('notes', id);
+            renderNotes();
+            renderProjects();
+            showToast("Note deleted");
+        }
+
         function updateWordCount() {
             const wordCount = notes.reduce((count, note) => {
                 return count + note.content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -504,12 +404,9 @@
                     name: projectName
                 };
                 projects.push(project);
-                saveToIndexedDB('projects', project)
-                    .then(() => {
-                        renderProjects();
-                        showToast("New project added: " + projectName);
-                    })
-                    .catch(error => showToast("Error adding project: " + error));
+                saveToIndexedDB('projects', project);
+                renderProjects();
+                showToast("New project added: " + projectName);
             }
         }
 
@@ -553,93 +450,16 @@
         }
 
         function deleteProject(id) {
-            deleteFromIndexedDB('projects', id)
-                .then(() => {
-                    projects = projects.filter(project => project.id !== id);
-                    const notesToDelete = notes.filter(note => note.projectId === id);
-                    Promise.all(notesToDelete.map(note => deleteFromIndexedDB('notes', note.id)))
-                        .then(() => {
-                            notes = notes.filter(note => note.projectId !== id);
-                            if (currentProject === id) {
-                                currentProject = null;
-                            }
-                            renderProjects();
-                            renderNotes();
-                            showToast("Project and associated notes deleted");
-                        })
-                        .catch(error => showToast("Error deleting project notes: " + error));
-                })
-                .catch(error => showToast("Error deleting project: " + error));
-        }
-
-        function showVersionHistory(noteId) {
-            const note = notes.find(n => n.id === noteId);
-            if (!note) return;
-
-            const versionList = note.versions.map((version, index) => `
-                <div class="version-item">
-                    <span>Version ${index + 1} - ${version.date}</span>
-                    <button onclick="previewVersion(${noteId}, ${index})">Preview</button>
-                </div>
-            `).join('');
-
-            showModal(`
-                <h3>Version History for "${note.title}"</h3>
-                ${versionList}
-            `);
-        }
-
-        function previewVersion(noteId, versionIndex) {
-            const note = notes.find(n => n.id === noteId);
-            if (!note) return;
-
-            const versionToPreview = note.versions[versionIndex];
-            showModal(`
-                <h3>Preview of Version ${versionIndex + 1} - ${versionToPreview.date}</h3>
-                <div>${versionToPreview.content}</div>
-                <button onclick="restoreVersion(${noteId}, ${versionIndex})">Restore This Version</button>
-            `);
-        }
-
-        function restoreVersion(noteId, versionIndex) {
-            const note = notes.find(n => n.id === noteId);
-            if (!note) return;
-
-            const versionToRestore = note.versions[versionIndex];
-            const newVersion = {
-                content: note.content,
-                date: new Date().toLocaleString()
-            };
-            note.versions.push(newVersion);
-            note.content = versionToRestore.content;
-            note.date = new Date().toLocaleString();
-
-            saveToIndexedDB('notes', note)
-                .then(() => {
-                    renderNotes();
-                    closeModal();
-                    showToast("Version restored");
-                })
-                .catch(error => showToast("Error restoring version: " + error));
-        }
-
-        function showModal(content) {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    ${content}
-                    <button onclick="closeModal()">Close</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        function closeModal() {
-            const modal = document.querySelector('.modal');
-            if (modal) {
-                modal.remove();
+            projects = projects.filter(project => project.id !== id);
+            deleteFromIndexedDB('projects', id);
+            notes = notes.filter(note => note.projectId !== id);
+            notes.forEach(note => deleteFromIndexedDB('notes', note.id));
+            if (currentProject === id) {
+                currentProject = null;
             }
+            renderProjects();
+            renderNotes();
+            showToast("Project and associated notes deleted");
         }
 
         function toggleTheme() {
@@ -666,7 +486,6 @@
             toast.innerHTML = `
                 ${message}
                 <input type="text" id="toast-input">
-                <button onclick="closeToast(this.parentNode)">Cancel</button>
             `;
             toastContainer.appendChild(toast);
             setTimeout(() => toast.style.opacity = '1', 10);
@@ -678,25 +497,12 @@
                     const value = input.value.trim();
                     if (value) {
                         callback(value);
-                        closeToast(toast);
+                        toast.style.opacity = '0';
+                        setTimeout(() => toast.remove(), 300);
                     }
                 }
             });
         }
-
-        function closeToast(toast) {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }
-
-        // Event Listeners
-        addNoteBtn.addEventListener('click', () => createNote());
-        addProjectBtn.addEventListener('click', () => showInputToast("Enter project name:", addProject));
-        themeToggle.addEventListener('click', toggleTheme);
-        versionFrequency.addEventListener('change', (e) => {
-            versioningInterval = parseInt(e.target.value);
-            showToast(`Version control interval set to ${versioningInterval / 1000} seconds`);
-        });
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', () => {
@@ -716,6 +522,9 @@
             authorInput.addEventListener('change', (e) => {
                 localStorage.setItem('author', e.target.value);
             });
+
+            // Event listener for theme toggle
+            themeToggle.addEventListener('click', toggleTheme);
         });
     </script>
 </body>
